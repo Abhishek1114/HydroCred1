@@ -1,61 +1,52 @@
 import { ethers } from "hardhat";
-import fs from "fs";
-import path from "path";
+import * as dotenv from "dotenv";
+
+dotenv.config();
 
 async function main() {
-  console.log("🚀 Deploying HydroCredToken...");
+  const mainAdminAddress = process.env.MAIN_ADMIN_ADDRESS;
   
-  const [deployer] = await ethers.getSigners();
-  console.log("Deploying with account:", deployer.address);
-  console.log("Account balance:", ethers.formatEther(await ethers.provider.getBalance(deployer.address)));
+  if (!mainAdminAddress) {
+    throw new Error("MAIN_ADMIN_ADDRESS not found in environment variables");
+  }
 
-  // Deploy the contract
+  console.log("Deploying HydroCredToken...");
+  console.log("Main Admin Address:", mainAdminAddress);
+
   const HydroCredToken = await ethers.getContractFactory("HydroCredToken");
-  const hydroCredToken = await HydroCredToken.deploy(deployer.address);
-  
+  const hydroCredToken = await HydroCredToken.deploy(mainAdminAddress);
+
   await hydroCredToken.waitForDeployment();
+
   const contractAddress = await hydroCredToken.getAddress();
   
-  console.log("✅ HydroCredToken deployed to:", contractAddress);
-  console.log("🔑 Default admin and certifier:", deployer.address);
+  console.log("HydroCredToken deployed to:", contractAddress);
+  console.log("Main Admin set to:", mainAdminAddress);
   
-  // Save contract address to file
-    // Save contract address to file
-  const net = await ethers.provider.getNetwork();
-  const contractInfo = {
-    address: contractAddress,
-    network: net.name,
-    chainId: net.chainId.toString(), // Fix: BigInt -> string
-    deployer: deployer.address,
-    deployedAt: new Date().toISOString()
+  // Verify the main admin role
+  const hasMainAdminRole = await hydroCredToken.hasRole(
+    await hydroCredToken.MAIN_ADMIN_ROLE(),
+    mainAdminAddress
+  );
+  
+  console.log("Main Admin role verified:", hasMainAdminRole);
+  
+  // Save deployment info
+  const deploymentInfo = {
+    contractAddress,
+    mainAdminAddress,
+    network: (await ethers.provider.getNetwork()).name,
+    blockNumber: await ethers.provider.getBlockNumber(),
+    timestamp: new Date().toISOString()
   };
-
-  fs.writeFileSync(
-    path.join(__dirname, "../contract-address.json"),
-    JSON.stringify(contractInfo, null, 2)
-  );
-
   
-  fs.writeFileSync(
-    path.join(__dirname, "../contract-address.json"),
-    JSON.stringify(contractInfo, null, 2)
-  );
-  
-  console.log("📄 Contract info saved to contract-address.json");
-  
-  // Verify contract deployment
-  try {
-    const name = await hydroCredToken.name();
-    const symbol = await hydroCredToken.symbol();
-    console.log(`📋 Contract verified: ${name} (${symbol})`);
-  } catch (error) {
-    console.error("❌ Contract verification failed:", error);
-  }
+  console.log("Deployment completed successfully!");
+  console.log("Deployment info:", JSON.stringify(deploymentInfo, null, 2));
 }
 
 main()
   .then(() => process.exit(0))
   .catch((error) => {
-    console.error("❌ Deployment failed:", error);
+    console.error(error);
     process.exit(1);
   });
