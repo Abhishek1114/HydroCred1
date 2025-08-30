@@ -18,7 +18,8 @@
     "test:connection": "node scripts/test-connection.js"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "tailwindcss-animate": "^1.0.7"
   },
   "engines": {
     "node": ">=18.0.0"
